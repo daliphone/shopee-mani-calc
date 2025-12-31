@@ -13,7 +13,7 @@ st.markdown("""
     
     .result-card { 
         border: 1px solid #e6e9ef; padding: 20px; border-radius: 12px; 
-        background-color: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); min-height: 550px;
+        background-color: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); min-height: 580px;
     }
     .title-拍 { color: #333333; border-bottom: 2px solid #333333; padding-bottom: 5px; }
     .title-商 { color: #EE4D2D; border-bottom: 2px solid #EE4D2D; padding-bottom: 5px; }
@@ -35,13 +35,19 @@ st.markdown("""
 # 3. 側邊欄
 with st.sidebar:
     st.header("⚙️ 系統資訊")
-    st.markdown('<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V16.4 (介面簡化版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V17.0 (家用電器+券配置版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
 
-# 4. 資料庫
+# 4. 擴充資料庫 (加入家用電器)
 FEE_DB = {
     "手機平板與周邊": {"手機": [5.5, 3.8], "平板電腦": [5.5, 4.0], "穿戴裝置": [5.5, 4.5]},
     "影音/相機": {"耳機/麥克風": [5.5, 6.5], "音響/喇叭": [6.0, 7.5]},
-    "電腦與周邊": {"筆記型電腦": [5.0, 4.0], "桌上型電腦": [5.5, 5.0]}
+    "電腦與周邊": {"筆記型電腦": [5.0, 4.0], "桌上型電腦": [5.5, 5.0]},
+    "家用電器": {
+        "大型家電 (冰箱/洗衣機)": [5.3, 5.8],
+        "生活/廚房家電": [5.5, 6.0],
+        "投影機與周邊": [7.5, 8.5],
+        "居安零件/遙控器": [6.0, 8.0]
+    }
 }
 
 # 5. 四等分布局
@@ -60,32 +66,50 @@ with col_in:
     s_cat_item = st.selectbox("細項分類", s_cat_list, format_func=lambda x: f"{x[0]} [拍:{x[1][0]}% / 商:{x[1][1]}%]")
     s_cat_name = s_cat_item[0]
 
-    # --- 第二層：全局參數設定 (修正為預設不展開: expanded=False) ---
+    # --- 全局參數設定 (券配置功能) ---
     with st.expander("⚙️ 全局參數與公式設定", expanded=False):
-        st.caption("以下費率可手動調整，調整後會同步至所有計算結果")
+        custom_p_rate = st.number_input(f"【{s_cat_name}】蝦拍成交率 (%)", value=s_cat_item[1][0], step=0.1)
+        custom_s_rate = st.number_input(f"【{s_cat_name}】蝦商成交率 (%)", value=s_cat_item[1][1], step=0.1)
+        st.markdown("---")
         
-        custom_p_rate = st.number_input(f"【{s_cat_name}】蝦拍費率 (%)", value=s_cat_item[1][0], step=0.1)
-        custom_s_rate = st.number_input(f"【{s_cat_name}】蝦商費率 (%)", value=s_cat_item[1][1], step=0.1)
+        # 券 1 配置
+        col_v1_1, col_v1_2 = st.columns([2, 1])
+        v1_rate = col_v1_1.number_input("10倍蝦拍券回饋 (%)", value=3.0, step=0.1)
+        v1_target = col_v1_2.selectbox("配置到", ["蝦拍", "蝦商"], key="v1_t")
+        
+        # 券 2 配置
+        col_v2_1, col_v2_2 = st.columns([2, 1])
+        v2_rate = col_v2_1.number_input("5倍蝦拍券回饋 (%)", value=1.5, step=0.1)
+        v2_target = col_v2_2.selectbox("配置到", ["蝦拍", "蝦商"], index=1, key="v2_t")
         
         st.markdown("---")
-        cfg_拍_券 = st.number_input("蝦拍券回饋 (%)", value=3.0, step=0.1)
-        cfg_商_券 = st.number_input("蝦商券回饋 (%)", value=1.5, step=0.1)
         cfg_直_後毛 = st.number_input("直送後毛費率 (%)", value=2.0, step=0.1)
         cfg_直_前毛_手機 = st.number_input("直送前毛(手機/平板) (%)", value=5.0, step=0.1)
         cfg_直_前毛_其他 = st.number_input("直送前毛(其他) (%)", value=12.0, step=0.1)
 
-# 核心計算邏輯
+# 計算邏輯 (動態券位)
 shared_fee = round(p * (pay_r / 100)) + ev
+
+# 判定哪個券在蝦拍，哪個在蝦商
+p_v_rate = v1_rate if v1_target == "蝦拍" else (v2_rate if v2_target == "蝦拍" else 0)
+p_v_name = "10倍券" if v1_target == "蝦拍" else ("5倍券" if v2_target == "蝦拍" else "自訂券")
+
+s_v_rate = v1_rate if v1_target == "蝦商" else (v2_rate if v2_target == "蝦商" else 0)
+s_v_name = "10倍券" if v1_target == "蝦商" else ("5倍券" if v2_target == "蝦商" else "自訂券")
+
+# 蝦拍
 tf1 = round(p * (custom_p_rate / 100))
-cf1 = round(p * (cfg_拍_券 / 100))
+cf1 = round(p * (p_v_rate / 100))
 total_fee1 = tf1 + cf1 + shared_fee
 payout1 = p - total_fee1
 
+# 蝦商
 tf2 = round(p * (custom_s_rate / 100))
-cf2 = round(p * (cfg_商_券 / 100))
+cf2 = round(p * (s_v_rate / 100))
 total_fee2 = tf2 + cf2 + shared_fee
 payout2 = p - total_fee2
 
+# 直送
 f_m_val = cfg_直_前毛_手機 if ("手機" in s_cat_name or "平板" in s_cat_name) else cfg_直_前毛_其他
 tf3 = round(p * (f_m_val / 100))
 tb3 = round(p * (cfg_直_後毛 / 100))
@@ -94,12 +118,12 @@ payout3 = p - total_fee3
 
 # --- 畫面渲染 ---
 with col_拍:
-    st.markdown(f"""<div class="result-card"><h3 class="title-拍">蝦拍(5倍券1.5%)</h3>
+    st.markdown(f"""<div class="result-card"><h3 class="title-拍">蝦拍({p_v_name}{p_v_rate}%)</h3>
         <p style="color:gray; font-size:0.9em;">品項: {s_cat_name}</p><hr>
         <p class="formula-text">公式: {p} × {custom_p_rate}%</p>
         <p class="expense-tag">成交手續費: -${tf1:,.0f}</p>
-        <p class="formula-text">公式: {p} × {cfg_拍_券}%</p>
-        <p class="expense-tag">券回饋費: -${cf1:,.0f}</p>
+        <p class="formula-text">公式: {p} × {p_v_rate}%</p>
+        <p class="expense-tag">{p_v_name}費: -${cf1:,.0f}</p>
         <p class="formula-text">公式: ({p} × {pay_r}%) + {ev}</p>
         <p class="expense-tag">金流/活動費: -${shared_fee:,.0f}</p>
         <div class="total-fee-tag">手續費總計: -${total_fee1:,.0f}</div>
@@ -109,12 +133,12 @@ with col_拍:
     </div>""", unsafe_allow_html=True)
 
 with col_商:
-    st.markdown(f"""<div class="result-card"><h3 class="title-商">蝦商(10倍券3%)</h3>
+    st.markdown(f"""<div class="result-card"><h3 class="title-商">蝦商({s_v_name}{s_v_rate}%)</h3>
         <p style="color:gray; font-size:0.9em;">品項: {s_cat_name}</p><hr>
         <p class="formula-text">公式: {p} × {custom_s_rate}%</p>
         <p class="expense-tag">成交手續費: -${tf2:,.0f}</p>
-        <p class="formula-text">公式: {p} × {cfg_商_券}%</p>
-        <p class="expense-tag">券回饋費: -${cf2:,.0f}</p>
+        <p class="formula-text">公式: {p} × {s_v_rate}%</p>
+        <p class="expense-tag">{s_v_name}費: -${cf2:,.0f}</p>
         <p class="formula-text">公式: ({p} × {pay_r}%) + {ev}</p>
         <p class="expense-tag">金流/活動費: -${shared_fee:,.0f}</p>
         <div class="total-fee-tag">手續費總計: -${total_fee2:,.0f}</div>
@@ -146,8 +170,8 @@ for cat, subs in FEE_DB.items():
     for sub_name, rates in subs.items():
         pr_row = custom_p_rate if sub_name == s_cat_name else rates[0]
         sr_row = custom_s_rate if sub_name == s_cat_name else rates[1]
-        p_p = p - (round(p*(pr_row/100)) + round(p*(cfg_拍_券/100)) + shared_fee) - c
-        s_p = p - (round(p*(sr_row/100)) + round(p*(cfg_商_券/100)) + shared_fee) - c
+        p_p = p - (round(p*(pr_row/100)) + round(p*(p_v_rate/100)) + shared_fee) - c
+        s_p = p - (round(p*(sr_row/100)) + round(p*(s_v_rate/100)) + shared_fee) - c
         dfm_val_row = cfg_直_前毛_手機 if ("手機" in sub_name or "平板" in sub_name) else cfg_直_前毛_其他
         d_p = p - (round(p*(dfm_val_row/100)) + round(p*(cfg_直_後毛/100))) - c
         rows.append({"分類細項": sub_name, "蝦拍利潤": int(p_p), "蝦商利潤": int(s_p), "直送利潤": int(d_p)})
@@ -158,4 +182,3 @@ st.dataframe(
     .format({"蝦拍利潤": "${:,.0f}", "蝦商利潤": "${:,.0f}", "直送利潤": "${:,.0f}"}),
     use_container_width=True
 )
-
