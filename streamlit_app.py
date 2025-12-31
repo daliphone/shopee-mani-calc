@@ -1,54 +1,48 @@
 import streamlit as st
 import pandas as pd
 
-# 1. 頁面基礎設定
+# 1. 頁面標題與分頁名稱
 st.set_page_config(page_title="馬尼專用蝦皮計算機", layout="wide")
 
-# 2. PDF 精確資料庫 (費率格式: [蝦拍%, 蝦商%])
+# 2. 精確資料庫 (包含一般費率與直送前毛費率)
 FEE_DB = {
     "手機平板與周邊": {
-        "手機": [5.5, 3.8], "平板電腦": [5.5, 4.0], "穿戴裝置": [5.5, 4.5], 
-        "對講機": [6.5, 9.5], "手機周邊配件/其他": [7.5, 9.5]
-    },
-    "家用電器": {
-        "大型家電": [5.3, 5.8], "生活/廚房家電": [5.5, 6.0], 
-        "投影機與周邊/其他": [7.5, 8.5], "居安零件/電池/遙控器": [6.0, 8.0]
-    },
-    "電腦與周邊配件": {
-        "筆記型電腦": [5.0, 4.0], "桌上型電腦": [5.5, 5.0], 
-        "螢幕/儲存裝置": [5.5, 5.5], "電腦零組件": [6.0, 6.5], "鍵盤滑鼠": [6.0, 7.0]
+        "手機": {"p_s": [5.5, 3.8], "direct_f": 5.0}, 
+        "平板電腦": {"p_s": [5.5, 4.0], "direct_f": 5.0}, 
+        "穿戴裝置": {"p_s": [5.5, 4.5], "direct_f": 5.0}
     },
     "影音/相機": {
-        "綜合擴大機/混音器": [4.0, 6.0], "耳機/耳麥/藍牙耳機": [5.5, 6.5], 
-        "音響/喇叭/麥克風": [6.0, 7.5], "鏡頭/相機": [5.0, 5.0], "視聽線材/轉換器": [6.0, 8.0]
+        "耳機(手機品牌)": {"p_s": [5.5, 6.5], "direct_f": 10.0}, 
+        "耳機(其他品牌)": {"p_s": [5.5, 6.5], "direct_f": 12.0}, 
+        "音響/喇叭/麥克風": {"p_s": [6.0, 7.5], "direct_f": 12.0}
     }
 }
 
-# 初始化自訂費率清單
 if 'c_fees' not in st.session_state: 
     st.session_state.c_fees = []
 
-# 3. 自訂 CSS 樣式
-f_sz = st.sidebar.slider("字體縮放", 12, 24, 16)
-st.markdown(f"""
+# 3. 全域 CSS 樣式
+st.markdown("""
     <style>
-    html, body, [class*="st-"] {{ font-size: {f_sz}px; font-family: 'Microsoft JhengHei'; }}
-    .result-box {{ 
+    html, body, [class*="st-"] { font-size: 16px; font-family: 'Microsoft JhengHei'; }
+    .result-box { 
         border: 2px solid #EE4D2D; 
         padding: 20px; 
-        border-radius: 12px; 
-        background-color: #ffffff;
-        margin-bottom: 15px;
-        box-shadow: 2px 2px 10px rgba(0,0,0,0.05);
-    }}
-    .price-text {{ color: #3498DB; font-weight: bold; }}
-    .expense-text {{ color: #E74C3C; }}
-    .profit-text {{ color: #27AE60; font-size: 1.4em; font-weight: bold; }}
+        border-radius: 15px; 
+        background-color: #fdfdfd;
+        margin-bottom: 20px;
+        box-shadow: 4px 4px 15px rgba(0,0,0,0.1);
+    }
+    .direct-box { border-color: #2980B9; } /* 直送區塊顏色區分 */
+    .price-text { color: #3498DB; font-weight: bold; }
+    .expense-text { color: #E74C3C; margin: 3px 0; font-size: 0.9em; }
+    .profit-text { color: #27AE60; font-size: 1.5em; font-weight: bold; }
+    hr { border: 0; border-top: 1px solid #eee; margin: 10px 0; }
     </style>
     """, unsafe_allow_html=True)
 
 # 4. 三欄式佈局
-col_in, col_拍, col_商 = st.columns([1, 1, 1])
+col_in, col_拍商, col_直送 = st.columns([1, 1, 1])
 
 # --- 欄位 1: 馬尼試算輸入 ---
 with col_in:
@@ -58,70 +52,77 @@ with col_in:
     pay_r = st.number_input("金流費率(%)", value=2.5, step=0.1)
     ev = st.number_input("活動日費用", value=60)
     
+    st.divider()
     m_cat = st.selectbox("商品大類", list(FEE_DB.keys()))
+    s_cat = st.selectbox("細項分類", list(FEE_DB[m_cat].keys()))
     
-    # 建立顯示費率的選單文字
-    sub_options = []
-    for k, v in FEE_DB[m_cat].items():
-        sub_options.append(f"{k} [蝦拍:{v[0]}% / 蝦商:{v[1]}%]")
-    
-    selected_sub_full = st.selectbox("細項分類 (標註對應費率)", sub_options)
-    s_cat = selected_sub_full.split(" [")[0]
+    # 讀取對應費率
+    rates = FEE_DB[m_cat][s_cat]
+    p_rate, s_rate = rates["p_s"]
+    front_margin = rates["direct_f"]
+    back_margin = 2.0  # 暫定後毛均為 2%
     
     st.divider()
-    n_n = st.text_input("自訂項目名稱")
-    n_r = st.number_input("自訂費率(%)", value=0.0, step=0.1)
+    st.caption("其他自訂費率(%)")
+    n_n = st.text_input("費用名稱")
+    n_r = st.number_input("費率", value=0.0)
     if st.button("新增自訂"):
-        if n_n: 
-            st.session_state.c_fees.append({"name": n_n, "rate": n_r/100, "active": True})
-            st.rerun()
+        if n_n: st.session_state.c_fees.append({"name": n_n, "rate": n_r/100})
+        st.rerun()
     
-    # 顯示已新增的自訂項目
-    cust_rate_sum = 0.0
-    if st.session_state.c_fees:
-        st.caption("已啟用的自訂項目：")
-        for i, fee in enumerate(st.session_state.c_fees):
-            if st.checkbox(f"{fee['name']} ({fee['rate']*100}%)", value=True, key=f"fee_{i}"):
-                cust_rate_sum += fee['rate']
+    current_cust_rate = sum([f['rate'] for f in st.session_state.c_fees])
+    if st.button("🗑️ 清空自訂"):
+        st.session_state.c_fees = []
+        st.rerun()
 
-    st.divider()
-    export_df = pd.DataFrame({"項目": ["單價", "成本", "活動費"], "數值": [price, cost, ev]})
-    st.download_button("💾 匯出試算表 (CSV)", export_df.to_csv(index=False).encode('utf-8-sig'), "馬尼報告.csv")
+# 5. 渲染函數
+def draw_card(title, t_rate, coin_r, color, is_direct=False):
+    # 計算邏輯
+    pf = price * (pay_r / 100)
+    cf = price * coin_r
+    cst_f = price * current_cust_rate
+    
+    if is_direct:
+        # 蝦皮直送專屬邏輯
+        front_f = price * (front_margin / 100)
+        back_f = price * (back_margin / 100)
+        total = front_f + back_f + pf + ev + cst_f
+        fees_html = f"""
+            <p class="expense-text">前毛手續({front_margin}%): -{front_f:,.0f}</p>
+            <p class="expense-text">後毛手續({back_margin}%): -{back_f:,.0f}</p>
+        """
+    else:
+        # 一般蝦拍/蝦商邏輯
+        tf = price * (t_rate / 100)
+        total = tf + pf + cf + ev + cst_f
+        fees_html = f"""
+            <p class="expense-text">成交手續({t_rate}%): -{tf:,.2f}</p>
+            <p class="expense-text">蝦幣回饋({coin_r*100}%): -{cf:,.2f}</p>
+        """
 
-# 5. 計算函數定義
-def render_report(title, t_rate, coin_r, color, current_price, current_cost, current_pay_r, current_ev, current_cust_rate):
-    tf = current_price * (t_rate / 100)
-    pf = current_price * (current_pay_r / 100)
-    cf = current_price * coin_r
-    cust_f = current_price * current_cust_rate
-    total_deduct = tf + pf + cf + current_ev + cust_f
-    payout = current_price - total_deduct
-    profit = payout - current_cost
+    payout = price - total
+    profit = payout - cost
+    box_class = "result-box direct-box" if is_direct else "result-box"
     
     st.markdown(f"""
-    <div class="result-box">
-        <h3 style="color:{color};">{title}</h3>
-        <p>單價: <span class="price-text">{current_price:,.0f} 元</span></p>
-        <p>成本: {current_cost:,.0f} 元</p>
+    <div class="{box_class}">
+        <h3 style="color:{color}; margin:0;">{title}</h3>
         <hr>
-        <p class="expense-text">成交手續({t_rate}%): -{tf:,.2f} 元</p>
-        <p class="expense-text">金流服務費: -{pf:,.2f} 元</p>
-        <p class="expense-text">蝦幣回饋費: -{cf:,.2f} 元</p>
-        <p class="expense-text">活動方案費: -{current_ev:,.0f} 元</p>
-        {f'<p class="expense-text">自訂項目費: -{cust_f:,.2f} 元</p>' if current_cust_rate > 0 else ''}
+        <p>單價: <span class="price-text">{price:,.0f}</span> / 成本: {cost:,.0f}</p>
+        {fees_html}
+        <p class="expense-text">金流/活動/自訂: -{(pf+ev+cst_f):,.0f}</p>
         <hr>
-        <p>實拿金額: <b>{payout:,.2f} 元</b></p>
-        <p>預計純利: <span class="profit-text">{profit:,.2f} 元</span></p>
+        <p style="font-size:0.9em; margin:0;">實拿: <b>{payout:,.0f}</b></p>
+        <p style="margin:0;">預計純利:</p>
+        <p class="profit-text">{profit:,.0f} 元</p>
     </div>
     """, unsafe_allow_html=True)
 
-# 讀取當前選擇的 PDF 費率
-p_rate_pdf, s_rate_pdf = FEE_DB[m_cat][s_cat]
+# --- 欄位 2: 蝦拍與蝦商 ---
+with col_拍商:
+    draw_card("蝦拍 (一般)", p_rate, 0.025, "#333333")
+    draw_card("蝦商 (商城)", s_rate, 0.015, "#EE4D2D")
 
-# --- 欄位 2: 蝦拍 (10% 2.5%) ---
-with col_拍:
-    render_report("蝦拍 (10% 2.5%)", p_rate_pdf, 0.025, "#333333", price, cost, pay_r, ev, cust_rate_sum)
-
-# --- 欄位 3: 蝦商 (5% 1.5%) ---
-with col_商:
-    render_report("蝦商 (5% 1.5%)", s_rate_pdf, 0.015, "#EE4D2D", price, cost, pay_r, ev, cust_rate_sum)
+# --- 欄位 3: 蝦皮直送 ---
+with col_直送:
+    draw_card("蝦皮直送 (專屬)", 0, 0, "#2980B9", is_direct=True)
