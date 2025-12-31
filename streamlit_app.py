@@ -4,15 +4,20 @@ import pandas as pd
 # 1. 頁面配置
 st.set_page_config(page_title="馬尼專用蝦皮計算機", layout="wide", initial_sidebar_state="expanded")
 
-# 2. CSS 樣式美化
+# 2. CSS 全局美化 (含微軟正黑體與 Enter 焦點優化)
 st.markdown("""
     <style>
+    /* 全局字體設定 */
+    html, body, [class*="css"] {
+        font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif !important;
+    }
+
     /* 隱藏異常文字 */
     span[data-testid="stSidebarCollapseIcon"], [data-testid="stExpanderToggleIcon"] { display: none !important; }
     
-    /* 馬尼輸入區字級加大 */
-    div[data-testid="stNumberInput"] label { font-size: 18px !important; font-weight: bold !important; }
-    div[data-testid="stNumberInput"] input { font-size: 20px !important; font-weight: bold !important; }
+    /* 馬尼輸入區字級加大與粗體 */
+    div[data-testid="stNumberInput"] label { font-size: 18px !important; font-weight: bold !important; color: #2C3E50 !important; }
+    div[data-testid="stNumberInput"] input { font-size: 22px !important; font-weight: 900 !important; color: #E67E22 !important; }
     
     /* 結果卡片樣式 */
     .result-card { 
@@ -23,26 +28,32 @@ st.markdown("""
     .title-商 { color: #EE4D2D; border-bottom: 2px solid #EE4D2D; padding-bottom: 5px; margin-bottom: 15px; }
     .title-直 { color: #2980B9; border-bottom: 2px solid #2980B9; padding-bottom: 5px; margin-bottom: 15px; }
     
-    /* 數字極致放大與單行顯示 */
-    .payout-row { font-size: 1.4em; font-weight: 800; color: #2c3e50; margin: 10px 0; }
-    .profit-row { 
-        display: flex; 
-        align-items: baseline; 
-        gap: 10px; 
-        margin-top: 15px;
-    }
-    .profit-label { font-size: 1.3em; font-weight: bold; color: #333; min-width: fit-content; }
-    .profit-val { color: #27AE60; font-size: 2.5em; font-weight: 900; line-height: 1; }
+    /* 數值排版優化 */
+    .payout-row { font-size: 1.5em; font-weight: 800; color: #2c3e50; margin: 12px 0; }
+    .profit-row { display: flex; align-items: baseline; gap: 8px; margin-top: 15px; }
+    .profit-label { font-size: 1.4em; font-weight: bold; color: #333; }
+    .profit-val { color: #27AE60; font-size: 2.8em; font-weight: 900; line-height: 1; }
     
     .expense-tag { color: #E74C3C; font-size: 1em; margin: 4px 0; }
-    hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
+    
+    /* 表格上方標題顏色 */
+    .table-header-custom {
+        color: #2980B9;
+        font-family: "Microsoft JhengHei", "微軟正黑體";
+        font-weight: bold;
+        font-size: 20px;
+        background-color: #ECF0F1;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # 3. 側邊欄
 with st.sidebar:
     st.header("⚙️ 系統資訊")
-    st.markdown(f'<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V14.1 (排版修正版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V15.0 (最終修正版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
 
 # 4. 資料庫
 FEE_DB = {
@@ -57,11 +68,11 @@ col_in, col_拍, col_商, col_直 = st.columns([1, 1, 1, 1])
 # --- 欄位 1: 馬尼輸入區 ---
 with col_in:
     st.subheader("📋 馬尼輸入")
-    # 設定按 Enter 後的焦點切換順序
-    p = st.number_input("成交單價 ($)", min_value=0, value=1000, key="input_p")
-    c = st.number_input("商品成本 ($)", min_value=0, value=500, key="input_c")
-    pay_r = st.number_input("金流費率 (%)", value=2.5, step=0.1, key="input_r")
-    ev = st.number_input("活動日費用 ($)", value=60, key="input_e")
+    # 使用單獨 key 確保 Enter 觸發重新渲染
+    p = st.number_input("成交單價 ($)", min_value=0, value=2850, key="price")
+    c = st.number_input("商品成本 ($)", min_value=0, value=500, key="cost")
+    pay_r = st.number_input("金流費率 (%)", value=2.5, step=0.1, key="pay_rate")
+    ev = st.number_input("活動日費用 ($)", value=60, key="event_fee")
     
     st.markdown("---")
     m_cat = st.selectbox("品類大類", list(FEE_DB.keys()))
@@ -87,11 +98,11 @@ tf3, tb3 = p*(f_m/100), p*0.02
 payout3 = p - tf3 - tb3
 profit3 = payout3 - c
 
-# --- 畫面渲染 (卡片區) ---
-def render_card(title, t_name, t_rate, tf, cf, cf_name, payout, profit, card_class):
+# --- 渲染函數 ---
+def render_card(title, t_rate, tf, cf, cf_name, payout, profit, card_css):
     st.markdown(f"""<div class="result-card">
-        <h3 class="{card_class}">{title}</h3>
-        <p>單價: <span class="price-tag">${p:,.0f}</span> / 成本: ${c:,.0f}</p>
+        <h3 class="{card_css}">{title}</h3>
+        <p style="font-size:1.1em;">手續費品項: <b>{s_cat_name}</b></p>
         <hr>
         <p class="expense-tag">成交手續({t_rate}%): -${tf:,.0f}</p>
         <p class="expense-tag">{cf_name}: -${cf:,.0f}</p>
@@ -105,20 +116,19 @@ def render_card(title, t_name, t_rate, tf, cf, cf_name, payout, profit, card_cla
     </div>""", unsafe_allow_html=True)
 
 with col_拍:
-    render_card("蝦拍(10倍券3%)", s_cat_name, p_rate, tf1, cf1, "10倍券回饋(3%)", payout1, profit1, "title-拍")
+    render_card("蝦拍(10倍券3%)", p_rate, tf1, cf1, "10倍券回饋(3%)", payout1, profit1, "title-拍")
 
 with col_商:
-    render_card("蝦商(5倍券1.5%)", s_cat_name, s_rate, tf2, cf2, "5倍券回饋(1.5%)", payout2, profit2, "title-商")
+    render_card("蝦商(5倍券1.5%)", s_rate, tf2, cf2, "5倍券回饋(1.5%)", payout2, profit2, "title-商")
 
 with col_直:
-    # 直送單獨處理，因為不計金流
     st.markdown(f"""<div class="result-card">
         <h3 class="title-直">蝦皮直送</h3>
-        <p>單價: <span class="price-tag">${p:,.0f}</span> / 成本: ${c:,.0f}</p>
+        <p style="font-size:1.1em;">類型: <b>{direct_type.split(' (')[0]}</b></p>
         <hr>
         <p class="expense-tag">前毛手續({f_m}%): -${tf3:,.0f}</p>
         <p class="expense-tag">後毛手續(2%): -${tb3:,.0f}</p>
-        <p style="color:#95a5a6; font-size:0.9em; margin-top:10px;">(直送不計金流/活動/券)</p>
+        <p style="color:#95a5a6; font-size:0.9em; margin-top:30px;">(直送不計金流/活動/券)</p>
         <hr>
         <div class="payout-row">實拿金額: <b>${payout3:,.0f}</b></div>
         <div class="profit-row">
@@ -127,9 +137,10 @@ with col_直:
         </div>
     </div>""", unsafe_allow_html=True)
 
-# --- 6. 橫向比較表 ---
+# --- 6. 橫向比較表 (美化強化版) ---
 st.markdown("---")
-st.subheader(f"📊 各細項分類毛利分析表 (單價:${p:,.0f} / 成本:${c:,.0f})")
+# 修正後的標題與顏色
+st.markdown(f'<div class="table-header-custom">📊 各細項分類毛利分析表 (單價: ${p:,.0f} / 成本: ${c:,.0f})</div>', unsafe_allow_html=True)
 
 rows = []
 for cat, subs in FEE_DB.items():
@@ -142,8 +153,10 @@ for cat, subs in FEE_DB.items():
         rows.append({"分類細項": sub_name, "蝦拍利潤": int(p_payout-c), "蝦商利潤": int(s_payout-c), "直送利潤": int(d_payout-c)})
 
 df_compare = pd.DataFrame(rows)
+
+# 使用表格美化與最高利潤顯色
 st.dataframe(
-    df_compare.style.highlight_max(axis=1, color='#d4edda', subset=["蝦拍利潤", "蝦商利潤", "直送利潤"])
+    df_compare.style.highlight_max(axis=1, color='#2ECC71', subset=["蝦拍利潤", "蝦商利潤", "直送利潤"])
     .format({"蝦拍利潤": "${:,.0f}", "蝦商利潤": "${:,.0f}", "直送利潤": "${:,.0f}"}),
     use_container_width=True
 )
