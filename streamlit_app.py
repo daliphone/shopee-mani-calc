@@ -35,7 +35,7 @@ st.markdown("""
 # 3. 側邊欄
 with st.sidebar:
     st.header("⚙️ 系統資訊")
-    st.markdown('<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V16.1 (參數連動版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V16.2 (穩定版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
 
 # 4. 資料庫
 FEE_DB = {
@@ -60,11 +60,10 @@ with col_in:
     s_cat_item = st.selectbox("細項分類", s_cat_list, format_func=lambda x: f"{x[0]} [拍:{x[1][0]}% / 商:{x[1][1]}%]")
     s_cat_name = s_cat_item[0]
 
-    # --- 第二層：全局參數設定 (包含細項費率調整) ---
+    # --- 第二層：全局參數設定 ---
     with st.expander("⚙️ 全局參數與公式設定", expanded=True):
         st.caption("以下費率可手動調整，調整後會同步至所有計算結果")
         
-        # 動態調整選定細項的費率
         custom_p_rate = st.number_input(f"【{s_cat_name}】蝦拍費率 (%)", value=s_cat_item[1][0], step=0.1)
         custom_s_rate = st.number_input(f"【{s_cat_name}】蝦商費率 (%)", value=s_cat_item[1][1], step=0.1)
         
@@ -75,22 +74,19 @@ with col_in:
         cfg_直_前毛_手機 = st.number_input("直送前毛(手機/平板) (%)", value=5.0, step=0.1)
         cfg_直_前毛_其他 = st.number_input("直送前毛(其他) (%)", value=12.0, step=0.1)
 
-# 核心計算邏輯 (全局四捨五入，套用自訂費率)
+# 核心計算邏輯 (全局四捨五入)
 shared_fee = round(p * (pay_r / 100)) + ev
 
-# 蝦拍
 tf1 = round(p * (custom_p_rate / 100))
 cf1 = round(p * (cfg_拍_券 / 100))
 total_fee1 = tf1 + cf1 + shared_fee
 payout1 = p - total_fee1
 
-# 蝦商
 tf2 = round(p * (custom_s_rate / 100))
 cf2 = round(p * (cfg_商_券 / 100))
 total_fee2 = tf2 + cf2 + shared_fee
 payout2 = p - total_fee2
 
-# 直送
 f_m_val = cfg_直_前毛_手機 if ("手機" in s_cat_name or "平板" in s_cat_name) else cfg_直_前毛_其他
 tf3 = round(p * (f_m_val / 100))
 tb3 = round(p * (cfg_直_後毛 / 100))
@@ -131,37 +127,4 @@ with col_商:
 with col_直:
     st.markdown(f"""<div class="result-card"><h3 class="title-直">蝦皮直送</h3>
         <p style="color:gray; font-size:0.9em;">類別: {"手機/平板" if f_m_val == cfg_直_前毛_手機 else "其他"}</p><hr>
-        <p class="formula-text">公式: {p} × {f_m_val}%</p>
-        <p class="expense-tag">前毛手續費: -${tf3:,.0f}</p>
-        <p class="formula-text">公式: {p} × {cfg_直_後毛}%</p>
-        <p class="expense-tag">後毛手續費: -${tb3:,.0f}</p>
-        <div class="total-fee-tag">手續費總計: -${total_fee3:,.0f}</div>
-        <p style="color:#95a5a6; font-size:0.85em; margin: 20px 0;">(不計金流/活動/券)</p>
-        <hr>
-        <div class="data-row"><span class="label-text">實拿金額:</span><span class="val-15 payout-color">${payout3:,.0f}</span></div>
-        <div class="data-row"><span class="label-text">預估毛利:</span><span class="val-15 profit-color">${payout3-c:,.0f}</span></div>
-    </div>""", unsafe_allow_html=True)
-
-# --- 6. 橫向比較表 ---
-st.markdown("---")
-st.markdown(f'<div style="color:#2980B9; font-weight:bold; font-size:20px; background:#F8F9F9; padding:12px; border-left:5px solid #2980B9;">📊 全品項分類毛利對照 (單價: ${p:,.0f} / 成本: ${c:,.0f})</div>', unsafe_allow_html=True)
-
-rows = []
-for cat, subs in FEE_DB.items():
-    for sub_name, rates in subs.items():
-        # 若為當前選定項目，採用自定義費率，其餘採用資料庫預設
-        pr = custom_p_rate if sub_name == s_cat_name else rates[0]
-        sr = custom_s_rate if sub_name == s_cat_name else rates[1]
-        
-        p_p = p - (round(p*(pr/100)) + round(p*(cfg_拍_券/100)) + shared_fee) - c
-        s_p = p - (round(p*(sr/100)) + round(p*(cfg_商_券/100)) + shared_fee) - c
-        dfm_val = cfg_直_前毛_手機 if ("手機" in sub_name or "平板" in sub_name) else cfg_直_前毛_結他
-        d_p = p - (round(p*(dfm_val/100)) + round(p*(cfg_直_後毛/100))) - c
-        rows.append({"分類細項": sub_name, "蝦拍利潤": int(p_p), "蝦商利潤": int(s_p), "直送利潤": int(d_p)})
-
-df_compare = pd.DataFrame(rows)
-st.dataframe(
-    df_compare.style.highlight_max(axis=0, color='#2ECC71', subset=["蝦拍利潤", "蝦商利潤", "直送利潤"])
-    .format({"蝦拍利潤": "${:,.0f}", "蝦商利潤": "${:,.0f}", "直送利潤": "${:,.0f}"}),
-    use_container_width=True
-)
+        <p class="formula-text">公式: {p} × {
