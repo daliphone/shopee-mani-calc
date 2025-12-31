@@ -24,7 +24,9 @@ FEE_DB = {
     }
 }
 
-if 'c_fees' not in st.session_state: st.session_state.c_fees = []
+# 初始化自訂費率清單
+if 'c_fees' not in st.session_state: 
+    st.session_state.c_fees = []
 
 # 3. 自訂 CSS 樣式
 f_sz = st.sidebar.slider("字體縮放", 12, 24, 16)
@@ -64,53 +66,62 @@ with col_in:
         sub_options.append(f"{k} [蝦拍:{v[0]}% / 蝦商:{v[1]}%]")
     
     selected_sub_full = st.selectbox("細項分類 (標註對應費率)", sub_options)
-    # 還原原始 Key 以讀取資料庫
     s_cat = selected_sub_full.split(" [")[0]
     
     st.divider()
     n_n = st.text_input("自訂項目名稱")
     n_r = st.number_input("自訂費率(%)", value=0.0, step=0.1)
     if st.button("新增自訂"):
-        if n_n: st.session_state.c_fees.append({"name": n_n, "rate": n_r/100, "active": True})
-        st.rerun()
+        if n_n: 
+            st.session_state.c_fees.append({"name": n_n, "rate": n_r/100, "active": True})
+            st.rerun()
     
+    # 顯示已新增的自訂項目
+    cust_rate_sum = 0.0
+    if st.session_state.c_fees:
+        st.caption("已啟用的自訂項目：")
+        for i, fee in enumerate(st.session_state.c_fees):
+            if st.checkbox(f"{fee['name']} ({fee['rate']*100}%)", value=True, key=f"fee_{i}"):
+                cust_rate_sum += fee['rate']
+
     st.divider()
     export_df = pd.DataFrame({"項目": ["單價", "成本", "活動費"], "數值": [price, cost, ev]})
     st.download_button("💾 匯出試算表 (CSV)", export_df.to_csv(index=False).encode('utf-8-sig'), "馬尼報告.csv")
 
-# 5. 計算核心邏輯
-cust_r_total = sum([f['rate'] for f in st.session_state.c_fees if f['active']])
-p_rate_pdf, s_rate_pdf = FEE_DB[m_cat][s_cat]
-
-def render_report(title, t_rate, coin_r, color):
-    tf = price * (t_rate / 100)
-    pf = price * (pay_r / 100)
-    cf = price * coin_r
-    cust_f = price * cust_rate_total
-    total_deduct = tf + pf + cf + ev + cust_f
-    payout = price - total_deduct
-    profit = payout - cost
+# 5. 計算函數定義
+def render_report(title, t_rate, coin_r, color, current_price, current_cost, current_pay_r, current_ev, current_cust_rate):
+    tf = current_price * (t_rate / 100)
+    pf = current_price * (current_pay_r / 100)
+    cf = current_price * coin_r
+    cust_f = current_price * current_cust_rate
+    total_deduct = tf + pf + cf + current_ev + cust_f
+    payout = current_price - total_deduct
+    profit = payout - current_cost
     
     st.markdown(f"""
     <div class="result-box">
         <h3 style="color:{color};">{title}</h3>
-        <p>單價: <span class="price-text">{price:,.0f} 元</span></p>
-        <p>成本: {cost:,.0f} 元</p>
+        <p>單價: <span class="price-text">{current_price:,.0f} 元</span></p>
+        <p>成本: {current_cost:,.0f} 元</p>
         <hr>
         <p class="expense-text">成交手續({t_rate}%): -{tf:,.2f} 元</p>
         <p class="expense-text">金流服務費: -{pf:,.2f} 元</p>
         <p class="expense-text">蝦幣回饋費: -{cf:,.2f} 元</p>
-        <p class="expense-text">活動方案費: -{ev:,.0f} 元</p>
+        <p class="expense-text">活動方案費: -{current_ev:,.0f} 元</p>
+        {f'<p class="expense-text">自訂項目費: -{cust_f:,.2f} 元</p>' if current_cust_rate > 0 else ''}
         <hr>
         <p>實拿金額: <b>{payout:,.2f} 元</b></p>
         <p>預計純利: <span class="profit-text">{profit:,.2f} 元</span></p>
     </div>
     """, unsafe_allow_html=True)
 
+# 讀取當前選擇的 PDF 費率
+p_rate_pdf, s_rate_pdf = FEE_DB[m_cat][s_cat]
+
 # --- 欄位 2: 蝦拍 (10% 2.5%) ---
 with col_拍:
-    render_report("蝦拍 (10% 2.5%)", p_rate_pdf, 0.025, "#333333")
+    render_report("蝦拍 (10% 2.5%)", p_rate_pdf, 0.025, "#333333", price, cost, pay_r, ev, cust_rate_sum)
 
 # --- 欄位 3: 蝦商 (5% 1.5%) ---
 with col_商:
-    render_report("蝦商 (5% 1.5%)", s_rate_pdf, 0.015, "#EE4D2D")
+    render_report("蝦商 (5% 1.5%)", s_rate_pdf, 0.015, "#EE4D2D", price, cost, pay_r, ev, cust_rate_sum)
