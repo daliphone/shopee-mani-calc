@@ -40,13 +40,19 @@ st.markdown("""
         border-left: 5px solid #2980B9;
         margin-bottom: 15px;
     }
+
+    /* 表格字體加大與粗體 */
+    .stDataFrame [data-testid="styled-table-cell"] {
+        font-size: 16px !important;
+        font-weight: bold !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # 3. 側邊欄
 with st.sidebar:
     st.header("⚙️ 系統資訊")
-    st.markdown('<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V15.1 (行級標記版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V15.2 (精確顯色版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
 
 # 4. 資料庫
 FEE_DB = {
@@ -70,14 +76,14 @@ with col_in:
     s_cat_name = st.selectbox("細項分類", list(FEE_DB[m_cat].keys()))
     direct_type = st.selectbox("直送類型", ["手機/平板 (5%+2%)", "耳機-品牌 (10%+2%)", "耳機-其他 (12%+2%)"])
 
-# 核心計算 (目前選定項)
+# 核心計算邏輯
 p_rate, s_rate = FEE_DB[m_cat][s_cat_name]
 res_拍 = p - (p*(p_rate/100)) - (p*(pay_r/100)) - (p*0.03) - ev
 res_商 = p - (p*(s_rate/100)) - (p*(pay_r/100)) - (p*0.015) - ev
 f_m = 5.0 if "手機" in direct_type else (10.0 if "品牌" in direct_type and "其他" not in direct_type else 12.0)
 res_直 = p - (p*(f_m/100)) - (p*0.02)
 
-# --- 卡片渲染 ---
+# --- 卡片渲染 (略，同 V15.1) ---
 def render_box(title, tr, tf, cf, cfn, po, pf, css):
     st.markdown(f"""<div class="result-card">
         <h3 class="{css}">{title}</h3>
@@ -104,7 +110,7 @@ with col_直:
         <div class="profit-row"><span class="profit-label">預估毛利:</span><span class="profit-val">${res_直-c:,.0f}</span></div>
     </div>""", unsafe_allow_html=True)
 
-# --- 6. 橫向比較表 (行級顯色強化版) ---
+# --- 6. 橫向比較表 (V15.2 修正顯色邏輯) ---
 st.markdown("---")
 st.markdown(f'<div class="table-header-custom">📊 各細項分類毛利分析表 (單價: ${p:,.0f} / 成本: ${c:,.0f})</div>', unsafe_allow_html=True)
 
@@ -120,7 +126,7 @@ for cat, subs in FEE_DB.items():
 
 df_compare = pd.DataFrame(rows)
 
-# 核心邏輯：axis=1 代表每一行(Row)單獨比較出最大值並標記
+# 修正重點：使用 highlight_max 並明確設定 axis=1，且美化字體
 st.dataframe(
     df_compare.style.highlight_max(axis=1, color='#2ECC71', subset=["蝦拍利潤", "蝦商利潤", "直送利潤"])
     .format({"蝦拍利潤": "${:,.0f}", "蝦商利潤": "${:,.0f}", "直送利潤": "${:,.0f}"}),
