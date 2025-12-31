@@ -9,7 +9,7 @@ st.markdown("""
     <style>
     html, body, [class*="css"] { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif !important; }
     div[data-testid="stNumberInput"] label { font-size: 16px !important; font-weight: bold !important; color: #2C3E50 !important; }
-    div[data-testid="stNumberInput"] input { font-size: 18px !important; font-weight: 900 !important; color: #E67E22 !important; }
+    div[data-testid="stNumberInput"] input { font-size: 20px !important; font-weight: 900 !important; color: #E67E22 !important; }
     .result-card { border: 1px solid #e6e9ef; padding: 20px; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); min-height: 620px; }
     .title-拍 { color: #333333; border-bottom: 2px solid #333333; padding-bottom: 5px; }
     .title-商 { color: #EE4D2D; border-bottom: 2px solid #EE4D2D; padding-bottom: 5px; }
@@ -23,16 +23,37 @@ st.markdown("""
     .expense-tag { color: #E74C3C; font-size: 0.95em; margin: 2px 0; font-weight: bold; }
     .total-fee-tag { color: #C0392B; font-weight: bold; font-size: 1em; margin: 8px 0; padding: 8px; background: #FDEDEC; border-radius: 5px; border-left: 4px solid #C0392B; }
     hr { border: 0; border-top: 1px solid #eee; margin: 8px 0; }
+    
+    /* 調整比較表標題顏色為綠色 */
+    .table-header-green {
+        color: #27AE60 !important;
+        font-weight: bold;
+        font-size: 20px;
+        background-color: #F8F9F9;
+        padding: 12px;
+        border-radius: 8px;
+        border-left: 5px solid #27AE60;
+        margin-bottom: 15px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # 3. 側邊欄
 with st.sidebar:
     st.header("⚙️ 系統資訊")
-    st.markdown('<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V23.0 (試算表同步版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V23.1 (預設分類版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
 
 # 4. 【試算表絕對對齊資料庫】 
 DB_FINAL = {
+    '手機平板與周邊': {
+        '手機 (一般賣家5.5%、商城賣家3.8%)': {'NONE': [5.5, 3.8]},
+        '平板電腦 (一般賣家5.5%、商城賣家4.0%)': {'NONE': [5.5, 4.0]},
+        '穿戴裝置 (一般賣家5.5%、商城賣家4.5%)': {'NONE': [5.5, 4.5]},
+        '對講機 (一般賣家6.5%、商城賣家9.5%)': {'NONE': [6.5, 9.5]},
+        '電話、儲值卡 (一般賣家7.5%、商城賣家9.5%)': {'NONE': [7.5, 9.5]},
+        '手機周邊配件 (一般賣家7.5%、商城賣家9.5%)': {'NONE': [7.5, 9.5]},
+        '其他 (一般賣家7.5%、商城賣家9.5%)': {'NONE': [7.5, 9.5]}
+    },
     '影音': {
         '綜合擴大機/混音器 (一般賣家4.0%、商城賣家6.0%)': {'NONE': [4.0, 6.0]},
         '耳機/耳麥/藍牙耳機 (一般賣家5.5%、商城賣家6.5%)': {'NONE': [5.5, 6.5]},
@@ -88,15 +109,6 @@ DB_FINAL = {
         '投影機與周邊配件 (一般賣家7.5%、商城賣家8.5%)': {'NONE': [7.5, 8.5]},
         '其他家電 (一般賣家7.5%、商城賣家8.5%)': {'NONE': [7.5, 8.5]}
     },
-    '手機平板與周邊': {
-        '手機 (一般賣家5.5%、商城賣家3.8%)': {'NONE': [5.5, 3.8]},
-        '平板電腦 (一般賣家5.5%、商城賣家4.0%)': {'NONE': [5.5, 4.0]},
-        '穿戴裝置 (一般賣家5.5%、商城賣家4.5%)': {'NONE': [5.5, 4.5]},
-        '對講機 (一般賣家6.5%、商城賣家9.5%)': {'NONE': [6.5, 9.5]},
-        '電話、儲值卡 (一般賣家7.5%、商城賣家9.5%)': {'NONE': [7.5, 9.5]},
-        '手機周邊配件 (一般賣家7.5%、商城賣家9.5%)': {'NONE': [7.5, 9.5]},
-        '其他 (一般賣家7.5%、商城賣家9.5%)': {'NONE': [7.5, 9.5]}
-    },
     '電玩遊戲': {
         '電玩主機 (一般賣家5.5%、商城賣家3.5%)': {'NONE': [5.5, 3.5]},
         '主機遊戲 (一般賣家5.5%、商城賣家6.5%)': {'NONE': [5.5, 6.5]},
@@ -116,7 +128,10 @@ with col_in:
     ev = st.number_input("活動日費用 ($)", value=60, key="ef")
     
     st.markdown("---")
-    l1 = st.selectbox("1. 首頁分類", list(DB_FINAL.keys()))
+    # 設定首頁分類預設為 '手機平板與周邊' (index=0)
+    cat_list = list(DB_FINAL.keys())
+    l1 = st.selectbox("1. 首頁分類", cat_list, index=cat_list.index('手機平板與周邊'))
+    
     l2 = st.selectbox("2. 第二層分類", list(DB_FINAL[l1].keys()))
     l3_dict = DB_FINAL[l1][l2]
     
@@ -189,7 +204,9 @@ with col_直:
 
 # --- 6. 橫向比較表 ---
 st.markdown("---")
-st.subheader(f"📊 全品項分類毛利對照 (單價: ${p:,.0f} / 成本: ${c:,.0f})")
+# 調整標題顏色為綠色
+st.markdown(f'<div class="table-header-green">📊 全品項分類毛利對照 (單價: ${p:,.0f} / 成本: ${c:,.0f})</div>', unsafe_allow_html=True)
+
 rows_list = []
 for c1, s2 in DB_FINAL.items():
     for c2, s3 in s2.items():
