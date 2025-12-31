@@ -94,7 +94,7 @@ payout3 = p - total_fee3
 
 # --- 畫面渲染 ---
 with col_拍:
-    st.markdown(f"""<div class="result-card"><h3 class="title-拍">蝦拍(一般)</h3>
+    st.markdown(f"""<div class="result-card"><h3 class="title-拍">蝦拍(5倍券1.5%)</h3>
         <p style="color:gray; font-size:0.9em;">品項: {s_cat_name}</p><hr>
         <p class="formula-text">公式: {p} × {custom_p_rate}%</p>
         <p class="expense-tag">成交手續費: -${tf1:,.0f}</p>
@@ -109,7 +109,7 @@ with col_拍:
     </div>""", unsafe_allow_html=True)
 
 with col_商:
-    st.markdown(f"""<div class="result-card"><h3 class="title-商">蝦商(商城)</h3>
+    st.markdown(f"""<div class="result-card"><h3 class="title-商">蝦商(10倍券3%)</h3>
         <p style="color:gray; font-size:0.9em;">品項: {s_cat_name}</p><hr>
         <p class="formula-text">公式: {p} × {custom_s_rate}%</p>
         <p class="expense-tag">成交手續費: -${tf2:,.0f}</p>
@@ -158,3 +158,4 @@ st.dataframe(
     .format({"蝦拍利潤": "${:,.0f}", "蝦商利潤": "${:,.0f}", "直送利潤": "${:,.0f}"}),
     use_container_width=True
 )
+
