@@ -4,7 +4,7 @@ import pandas as pd
 # 1. 頁面配置
 st.set_page_config(page_title="馬尼專用蝦皮計算機", layout="wide", initial_sidebar_state="expanded")
 
-# 2. CSS 全局美化 (含同列排版邏輯)
+# 2. CSS 全局美化
 st.markdown("""
     <style>
     html, body, [class*="css"] { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif !important; }
@@ -16,7 +16,7 @@ st.markdown("""
     /* 結果卡片樣式 */
     .result-card { 
         border: 1px solid #e6e9ef; padding: 22px; border-radius: 12px; 
-        background-color: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); min-height: 480px;
+        background-color: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); min-height: 500px;
     }
     .title-拍 { color: #333333; border-bottom: 2px solid #333333; padding-bottom: 5px; margin-bottom: 12px; }
     .title-商 { color: #EE4D2D; border-bottom: 2px solid #EE4D2D; padding-bottom: 5px; margin-bottom: 12px; }
@@ -28,14 +28,17 @@ st.markdown("""
         justify-content: flex-start;
         align-items: baseline;
         gap: 12px;
-        margin-top: 12px;
+        margin-top: 10px;
     }
     .label-text { font-size: 1.1em; font-weight: bold; color: #555; white-space: nowrap; }
     .val-15 { font-size: 1.5em; font-weight: 900; line-height: 1; }
     .payout-color { color: #2c3e50; }
     .profit-color { color: #27AE60; }
     
+    /* 費用相關標籤 */
     .expense-tag { color: #E74C3C; font-size: 0.95em; margin: 3px 0; }
+    .total-fee-tag { color: #C0392B; font-weight: bold; font-size: 1.05em; margin: 8px 0; padding: 5px; background: #FDEDEC; border-radius: 5px; }
+    
     hr { border: 0; border-top: 1px solid #eee; margin: 12px 0; }
     
     /* 分析表標題 */
@@ -51,7 +54,7 @@ st.markdown("""
 # 3. 側邊欄
 with st.sidebar:
     st.header("⚙️ 系統資訊")
-    st.markdown('<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V15.5 (最終排版版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V15.6 (手續費強化版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
 
 # 4. 資料庫
 FEE_DB = {
@@ -80,16 +83,19 @@ shared_fee = p * (pay_r / 100) + ev
 
 # A. 蝦拍
 tf1, cf1 = p * (p_rate / 100), p * 0.03
-payout1 = p - tf1 - cf1 - shared_fee
+total_fee1 = tf1 + cf1 + shared_fee
+payout1 = p - total_fee1
 
 # B. 蝦商
 tf2, cf2 = p * (s_rate / 100), p * 0.015
-payout2 = p - tf2 - cf2 - shared_fee
+total_fee2 = tf2 + cf2 + shared_fee
+payout2 = p - total_fee2
 
 # C. 蝦皮直送
 f_m = 5.0 if "手機" in direct_type else (10.0 if "品牌" in direct_type and "其他" not in direct_type else 12.0)
 tf3, tb3 = p * (f_m / 100), p * 0.02
-payout3 = p - tf3 - tb3
+total_fee3 = tf3 + tb3
+payout3 = p - total_fee3
 
 # --- 上方卡片渲染 ---
 with col_拍:
@@ -97,6 +103,7 @@ with col_拍:
         <p class="expense-tag">成交手續({p_rate}%): -${tf1:,.0f}</p>
         <p class="expense-tag">10倍券回饋(3%): -${cf1:,.0f}</p>
         <p class="expense-tag">金流/活動費: -${shared_fee:,.0f}</p>
+        <div class="total-fee-tag">手續費總計: -${total_fee1:,.0f}</div>
         <hr>
         <div class="data-row"><span class="label-text">實拿金額:</span><span class="val-15 payout-color">${payout1:,.0f}</span></div>
         <div class="data-row"><span class="label-text">預估毛利:</span><span class="val-15 profit-color">${payout1-c:,.0f}</span></div>
@@ -107,6 +114,7 @@ with col_商:
         <p class="expense-tag">成交手續({s_rate}%): -${tf2:,.0f}</p>
         <p class="expense-tag">5倍券回饋(1.5%): -${cf2:,.0f}</p>
         <p class="expense-tag">金流/活動費: -${shared_fee:,.0f}</p>
+        <div class="total-fee-tag">手續費總計: -${total_fee2:,.0f}</div>
         <hr>
         <div class="data-row"><span class="label-text">實拿金額:</span><span class="val-15 payout-color">${payout2:,.0f}</span></div>
         <div class="data-row"><span class="label-text">預估毛利:</span><span class="val-15 profit-color">${payout2-c:,.0f}</span></div>
@@ -116,7 +124,8 @@ with col_直:
     st.markdown(f"""<div class="result-card"><h3 class="title-直">蝦皮直送</h3>
         <p class="expense-tag">前毛手續({f_m}%): -${tf3:,.0f}</p>
         <p class="expense-tag">後毛手續(2%): -${tb3:,.0f}</p>
-        <p style="color:#95a5a6; font-size:0.85em; margin: 25px 0;">(不計金流/活動/券)</p>
+        <div class="total-fee-tag">手續費總計: -${total_fee3:,.0f}</div>
+        <p style="color:#95a5a6; font-size:0.85em; margin: 15px 0;">(不計金流/活動/券)</p>
         <hr>
         <div class="data-row"><span class="label-text">實拿金額:</span><span class="val-15 payout-color">${payout3:,.0f}</span></div>
         <div class="data-row"><span class="label-text">預估毛利:</span><span class="val-15 profit-color">${payout3-c:,.0f}</span></div>
