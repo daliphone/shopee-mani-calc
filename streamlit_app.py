@@ -4,7 +4,7 @@ import pandas as pd
 # 1. 頁面配置
 st.set_page_config(page_title="馬尼專用蝦皮計算機", layout="wide", initial_sidebar_state="expanded")
 
-# 2. CSS 全局美化
+# 2. CSS 全局美化 (含同列排版邏輯)
 st.markdown("""
     <style>
     html, body, [class*="css"] { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif !important; }
@@ -22,13 +22,21 @@ st.markdown("""
     .title-商 { color: #EE4D2D; border-bottom: 2px solid #EE4D2D; padding-bottom: 5px; margin-bottom: 12px; }
     .title-直 { color: #2980B9; border-bottom: 2px solid #2980B9; padding-bottom: 5px; margin-bottom: 12px; }
     
-    /* 數值統一 1.5em 並加粗 */
-    .val-15 { font-size: 1.5em; font-weight: 900; line-height: 1.2; }
+    /* 數值同列排版 (Flexbox) */
+    .data-row {
+        display: flex;
+        justify-content: flex-start;
+        align-items: baseline;
+        gap: 12px;
+        margin-top: 12px;
+    }
+    .label-text { font-size: 1.1em; font-weight: bold; color: #555; white-space: nowrap; }
+    .val-15 { font-size: 1.5em; font-weight: 900; line-height: 1; }
     .payout-color { color: #2c3e50; }
     .profit-color { color: #27AE60; }
     
     .expense-tag { color: #E74C3C; font-size: 0.95em; margin: 3px 0; }
-    .label-text { font-size: 1em; font-weight: bold; color: #555; margin-top: 10px; }
+    hr { border: 0; border-top: 1px solid #eee; margin: 12px 0; }
     
     /* 分析表標題 */
     .table-header-custom {
@@ -36,8 +44,6 @@ st.markdown("""
         background-color: #F8F9F9; padding: 12px; border-radius: 8px;
         border-left: 5px solid #2980B9; margin-bottom: 15px;
     }
-
-    /* 表格字體加粗 */
     .stDataFrame [data-testid="styled-table-cell"] { font-weight: bold !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -45,7 +51,7 @@ st.markdown("""
 # 3. 側邊欄
 with st.sidebar:
     st.header("⚙️ 系統資訊")
-    st.markdown('<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V15.4 (內容完整版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V15.5 (最終排版版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
 
 # 4. 資料庫
 FEE_DB = {
@@ -70,7 +76,6 @@ with col_in:
 
 # 核心計算
 p_rate, s_rate = FEE_DB[m_cat][s_cat_name]
-# 共通扣項
 shared_fee = p * (pay_r / 100) + ev
 
 # A. 蝦拍
@@ -93,8 +98,8 @@ with col_拍:
         <p class="expense-tag">10倍券回饋(3%): -${cf1:,.0f}</p>
         <p class="expense-tag">金流/活動費: -${shared_fee:,.0f}</p>
         <hr>
-        <p class="label-text">實拿金額:</p><div class="val-15 payout-color">${payout1:,.0f}</div>
-        <p class="label-text">預估毛利:</p><div class="val-15 profit-color">${payout1-c:,.0f}</div>
+        <div class="data-row"><span class="label-text">實拿金額:</span><span class="val-15 payout-color">${payout1:,.0f}</span></div>
+        <div class="data-row"><span class="label-text">預估毛利:</span><span class="val-15 profit-color">${payout1-c:,.0f}</span></div>
     </div>""", unsafe_allow_html=True)
 
 with col_商:
@@ -103,18 +108,18 @@ with col_商:
         <p class="expense-tag">5倍券回饋(1.5%): -${cf2:,.0f}</p>
         <p class="expense-tag">金流/活動費: -${shared_fee:,.0f}</p>
         <hr>
-        <p class="label-text">實拿金額:</p><div class="val-15 payout-color">${payout2:,.0f}</div>
-        <p class="label-text">預估毛利:</p><div class="val-15 profit-color">${payout2-c:,.0f}</div>
+        <div class="data-row"><span class="label-text">實拿金額:</span><span class="val-15 payout-color">${payout2:,.0f}</span></div>
+        <div class="data-row"><span class="label-text">預估毛利:</span><span class="val-15 profit-color">${payout2-c:,.0f}</span></div>
     </div>""", unsafe_allow_html=True)
 
 with col_直:
     st.markdown(f"""<div class="result-card"><h3 class="title-直">蝦皮直送</h3>
         <p class="expense-tag">前毛手續({f_m}%): -${tf3:,.0f}</p>
         <p class="expense-tag">後毛手續(2%): -${tb3:,.0f}</p>
-        <p style="color:#95a5a6; font-size:0.85em; margin: 15px 0;">(不計金流/活動/券)</p>
+        <p style="color:#95a5a6; font-size:0.85em; margin: 25px 0;">(不計金流/活動/券)</p>
         <hr>
-        <p class="label-text">實拿金額:</p><div class="val-15 payout-color">${payout3:,.0f}</div>
-        <p class="label-text">預估毛利:</p><div class="val-15 profit-color">${payout3-c:,.0f}</div>
+        <div class="data-row"><span class="label-text">實拿金額:</span><span class="val-15 payout-color">${payout3:,.0f}</span></div>
+        <div class="data-row"><span class="label-text">預估毛利:</span><span class="val-15 profit-color">${payout3-c:,.0f}</span></div>
     </div>""", unsafe_allow_html=True)
 
 # --- 6. 橫向比較表 ---
