@@ -7,7 +7,7 @@ st.set_page_config(page_title="馬尼專用蝦皮計算機", layout="wide", init
 # 2. CSS 全局美化
 st.markdown("""
     <style>
-    html, body, [class*="css"] { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif !important; }
+    html, body, [class*="css"] { font-family: "Microsoft JhengHei", "微軟正soft正黑體", sans-serif !important; }
     div[data-testid="stNumberInput"] label { font-size: 16px !important; font-weight: bold !important; color: #2C3E50 !important; }
     div[data-testid="stNumberInput"] input { font-size: 18px !important; font-weight: 900 !important; color: #E67E22 !important; }
     
@@ -35,7 +35,7 @@ st.markdown("""
 # 3. 側邊欄
 with st.sidebar:
     st.header("⚙️ 系統資訊")
-    st.markdown('<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V16.2 (穩定版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:11px; color:#95a5a6;">馬尼專用蝦皮計算機<br>版本：V16.3 (穩定修復版)<br>© 2025 Mani Shopee Calc</div>', unsafe_allow_html=True)
 
 # 4. 資料庫
 FEE_DB = {
@@ -127,4 +127,38 @@ with col_商:
 with col_直:
     st.markdown(f"""<div class="result-card"><h3 class="title-直">蝦皮直送</h3>
         <p style="color:gray; font-size:0.9em;">類別: {"手機/平板" if f_m_val == cfg_直_前毛_手機 else "其他"}</p><hr>
-        <p class="formula-text">公式: {p} × {
+        <p class="formula-text">公式: {p} × {f_m_val}%</p>
+        <p class="expense-tag">前毛手續費: -${tf3:,.0f}</p>
+        <p class="formula-text">公式: {p} × {cfg_直_後毛}%</p>
+        <p class="expense-tag">後毛手續費: -${tb3:,.0f}</p>
+        <div class="total-fee-tag">手續費總計: -${total_fee3:,.0f}</div>
+        <p style="color:#95a5a6; font-size:0.85em; margin: 20px 0;">(不計金流/活動/券)</p>
+        <hr>
+        <div class="data-row"><span class="label-text">實拿金額:</span><span class="val-15 payout-color">${payout3:,.0f}</span></div>
+        <div class="data-row"><span class="label-text">預估毛利:</span><span class="val-15 profit-color">${payout3-c:,.0f}</span></div>
+    </div>""", unsafe_allow_html=True)
+
+# --- 6. 橫向比較表 ---
+st.markdown("---")
+st.markdown(f'<div style="color:#2980B9; font-weight:bold; font-size:20px; background:#F8F9F9; padding:12px; border-left:5px solid #2980B9;">📊 全品項分類毛利對照 (單價: ${p:,.0f} / 成本: ${c:,.0f})</div>', unsafe_allow_html=True)
+
+rows = []
+for cat, subs in FEE_DB.items():
+    for sub_name, rates in subs.items():
+        pr_row = custom_p_rate if sub_name == s_cat_name else rates[0]
+        sr_row = custom_s_rate if sub_name == s_cat_name else rates[1]
+        
+        p_p = p - (round(p*(pr_row/100)) + round(p*(cfg_拍_券/100)) + shared_fee) - c
+        s_p = p - (round(p*(sr_row/100)) + round(p*(cfg_商_券/100)) + shared_fee) - c
+        
+        dfm_val_row = cfg_直_前毛_手機 if ("手機" in sub_name or "平板" in sub_name) else cfg_直_前毛_其他
+        d_p = p - (round(p*(dfm_val_row/100)) + round(p*(cfg_直_後毛/100))) - c
+        
+        rows.append({"分類細項": sub_name, "蝦拍利潤": int(p_p), "蝦商利潤": int(s_p), "直送利潤": int(d_p)})
+
+df_compare = pd.DataFrame(rows)
+st.dataframe(
+    df_compare.style.highlight_max(axis=0, color='#2ECC71', subset=["蝦拍利潤", "蝦商利潤", "直送利潤"])
+    .format({"蝦拍利潤": "${:,.0f}", "蝦商利潤": "${:,.0f}", "直送利潤": "${:,.0f}"}),
+    use_container_width=True
+)
