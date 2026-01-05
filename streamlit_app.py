@@ -1,6 +1,5 @@
 import streamlit as st
-import pd as pd
-import pandas as pd
+import pandas as pd  # 修正處：確保導入正確的 pandas 模組
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
@@ -36,7 +35,6 @@ st.markdown("""
     .label-text { font-size: 1.05em; font-weight: bold; color: #555; white-space: nowrap; }
     .val-15 { font-size: 1.5em; font-weight: 900; line-height: 1; }
     
-    /* 視覺強化區 */
     .compare-title { color: #1A5276; font-size: 1.1em; font-weight: 900; margin-top: 12px; margin-bottom: 5px; }
     .val-no-v-payout { font-size: 1.3em; font-weight: 900; color: #2C3E50; }
     .val-no-v-profit { font-size: 1.3em; font-weight: 900; color: #27AE60; }
@@ -57,7 +55,7 @@ with st.sidebar:
     staff_name = st.text_input("人員姓名", value="馬尼員工")
     store_name = st.selectbox("所屬門市", ["總店", "分店A", "分店B"])
     st.markdown("---")
-    st.markdown('<div style="font-size:11px; color:#95a5a6;">版本：V25.4 (全數據版)</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:11px; color:#95a5a6;">版本：V25.5 (穩定旗艦版)</div>', unsafe_allow_html=True)
 
 # 4. 【完整試算表數據資料庫】
 DB_FINAL = {
@@ -176,15 +174,12 @@ s_v_rate = v1_rate if v1_target == "蝦商" else (v2_rate if v2_target == "蝦�
 p_v_n = "10倍券" if v1_target == "蝦拍" else "5倍券"
 s_v_n = "10倍券" if v1_target == "蝦商" else "5倍券"
 
-# 蝦拍
 tf1 = round(p*(custom_p_rate/100)); cf1 = round(p*(p_v_rate/100)); tot1 = tf1 + cf1 + shared_fee; po1 = p - tot1
-po1_no_v = p - tf1 - shared_fee # 不含券
+po1_no_v = p - tf1 - shared_fee 
 
-# 蝦商
 tf2 = round(p*(custom_s_rate/100)); cf2 = round(p*(s_v_rate/100)); tot2 = tf2 + cf2 + shared_fee; po2 = p - tot2
-po2_no_v = p - tf2 - shared_fee # 不含券
+po2_no_v = p - tf2 - shared_fee 
 
-# 直送
 f_m = cfg_直_前毛_手機 if ("手機" in l1 or "平板" in l1) else cfg_直_前毛_其他
 tf3 = round(p*(f_m/100)); tb3 = round(p*(cfg_直_後毛/100)); tot3 = tf3+tb3; po3 = p-tot3
 
@@ -241,10 +236,11 @@ if st.button("🚀 同步當前結果至 Google Sheets"):
         except Exception as e:
             st.error(f"同步失敗: {e}")
     else:
-        st.warning("⚠️ Google Sheets 未連線，請確認 Secrets。")
+        st.warning("⚠️ Google Sheets 未連線。")
 
 st.markdown(f'<div class="table-header-green">📊 全品項分類毛利對照 (單價: ${p:,.0f} / 成本: ${c:,.0f})</div>', unsafe_allow_html=True)
 
+# 生成比較表
 rows_list = []
 for cl1, sub2 in DB_FINAL.items():
     for cl2, items3 in sub2.items():
